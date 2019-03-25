@@ -1,0 +1,86 @@
+public class RemoveMyDebuglogs {
+    
+    Public static Void minutesAgo(integer amount)
+    {
+        
+        Datetime hfb = system.now().addminutes(-1 * Amount);     
+        string Userid = UserInfo.getUserId();    
+        List<ApexLog> AL =   [SELECT Application,Id,LastModifiedDate,LogUserId,Operation,Request,StartTime,Status FROM ApexLog Where Loguserid = :Userid and StartTime < :hfb];System.debug(AL);   
+        If(AL.size() > 0){
+            deleteApexLogs2(AL); 
+        }            
+    }
+    
+
+    Public static Void hoursAgo(integer amount)
+    {       
+        Datetime hfb = system.now().addhours(-1 * Amount);     
+        string Userid = UserInfo.getUserId();    
+        List<ApexLog> AL =   [SELECT Application,Id,LastModifiedDate,LogUserId,Operation,Request,StartTime,Status FROM ApexLog Where Loguserid = :Userid and StartTime < :hfb];
+        If(AL.size() > 0){
+            deleteApexLogs2(AL); 
+        }    
+    }
+    
+    Public static Void daysAgo(integer amount)
+    {       
+        Datetime hfb = system.now().adddays(-1 * Amount);     
+        string Userid = UserInfo.getUserId();    
+        List<ApexLog> AL =   [SELECT Application,Id,LastModifiedDate,LogUserId,Operation,Request,StartTime,Status FROM ApexLog Where Loguserid = :Userid and StartTime < :hfb];
+        If(AL.size() > 0){
+            deleteApexLogs2(AL); 
+        }    
+    }
+    
+    // recatored to be more efficient if you had over 100 debug logs then too many  call outs would create an error
+    // Now using /services/data/v44.0/composite/sobjects? endpoint that allows up to 200 ids per delete call
+    // code currently set to batch at 100  integer indexamnt = 100;
+    
+    Public static void deleteApexLogs2(List<apexlog> Loglist) {
+        
+        //break up the Loglist into chunks set by the indexamnt
+        List<string> restcalls = New list<string>();
+        integer amount = loglist.size();
+        //system.debug(amount);
+        Integer count = 0;
+        integer indexamnt = 100;
+        integer indexer = 0;
+        integer stopat = 0;
+        // loop while the counter is below the total number of records passed
+        while (count < amount) {
+            string restcall = 'ids=';
+            // for each time around the outer loop check if the index point plus the next amount of records is still below the total number of records
+            If(indexer + indexamnt > amount)
+            {
+                stopat = amount;       
+            }
+            Else
+            {
+                stopat = indexer + indexamnt;
+            }
+            // with the apporiate stopping point set above loop around the next group of records building the ids string, increment counter each time
+            for(Integer i = indexer; i < stopat; i++)
+            {
+                restcall += Loglist[i].id +',';
+                count++;
+            }
+            // once done with the loop increment the indexer , trim the last comma from the string "restcall" and add restcall to the list 
+            indexer += indexamnt;
+            restcall = restcall.left(restcall.length()-1);
+            restcalls.add(restcall);
+        }
+        for(string theids: restcalls){
+
+            Http h = new Http();
+            HttpRequest req = new HttpRequest();
+            req.setEndpoint(Url.getOrgDomainUrl().toExternalForm()+ '/services/data/v44.0/composite/sobjects?' + theids);
+            req.setMethod('DELETE');
+            req.setHeader('Authorization', 'Bearer ' + UserInfo.getSessionId());
+            HttpResponse res = h.send(req);
+            //System.debug(res.getStatusCode());
+            //System.debug(res.getHeaderKeys());  
+            //System.debug(res.getBody());        
+        }
+        
+    }
+}
