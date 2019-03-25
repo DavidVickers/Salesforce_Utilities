@@ -1,0 +1,17 @@
+@istest
+public class removeMyDebuglogsTest {
+// Methods for testing
+   @isTest static void hours() {
+       Test.setMock(HttpCalloutMock.class, new removeMydebugLogsMock());
+       RemoveMyDebuglogs.hoursAgo(1);
+   }
+
+   @isTest static void minutes() {
+       Test.setMock(HttpCalloutMock.class, new removeMydebugLogsMock());
+      RemoveMyDebuglogs.minutesAgo(1);
+   }   
+   @isTest static void days() {
+       Test.setMock(HttpCalloutMock.class, new removeMydebugLogsMock());
+      RemoveMyDebuglogs.daysAgo(1);
+   } 
+}
