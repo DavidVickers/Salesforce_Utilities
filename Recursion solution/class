@@ -1,0 +1,57 @@
+public class DAV_Recursion 
+{
+
+Public static map<String,integer> Called = New Map<string,integer>();
+    
+Public static void ResetAll()
+    {
+    Called = New Map<string,integer>();   
+    }
+
+
+Public static integer NumberofCalls(String Input)
+    { 
+        If(!called.containsKey(Input))
+        {
+            return 0;    
+        }
+        Else
+            return called.get(Input);
+    }
+ Public static integer IveBeenCalled(String Input)
+    { 
+        If(!called.containsKey(Input))
+        {
+            called.put(input, 1);   
+        }
+        Else 
+        {
+            integer i = Called.get(input);
+            I++;
+            called.put(input,I);
+        }      
+        return Called.get(input);
+    }
+}
+
+/*
+
+@IsTest
+private class Dav_Recursion_Test {
+
+   @IsTest  static void recursiontest()  
+    {
+      system.equals(0,dav_recursion.NumberofCalls('Testme'));  
+      system.equals(1,dav_recursion.IveBeenCalled('Testme'));
+      system.equals(1,dav_recursion.NumberofCalls('Testme'));  
+      system.equals(2,dav_recursion.IveBeenCalled('Testme'));    
+      dav_recursion.ResetAll();  
+      system.equals(0,dav_recursion.NumberofCalls('Testme'));  
+      system.equals(1,dav_recursion.IveBeenCalled('Testme'));
+      system.equals(1,dav_recursion.NumberofCalls('Testme'));  
+      system.equals(2,dav_recursion.IveBeenCalled('Testme'));            
+    }     
+}
+gives 100% coverage
+
+*/
