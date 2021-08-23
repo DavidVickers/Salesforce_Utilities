@@ -1,0 +1,260 @@
+Global class FLSBatch implements Database.Batchable<sObject>, Database.Stateful {
+    
+    Public id permSetId;
+    Public string rWOption; //values are r or rw or none
+    //Private string ProfileId; 
+    Public List<string> myobjs;
+    Public Map<String, Schema.SObjectType> gd = Schema.getGlobalDescribe();
+    
+    Public FLSBatch(string Profilename, List<string> objs, string readWriteOption){
+        this.myobjs = objs;  
+        this.rWOption = readWriteOption.toLowerCase();
+        Profile p = [Select Id,Name from Profile where name = :ProfileName Limit 1]; 
+        List<PermissionSet> lPS = [SELECT Id FROM PermissionSet WHERE IsOwnedByProfile = true and ProfileId  = :p.id Limit 1];
+        this.permSetId = lPS[0].id;
+        System.debug(p);
+        System.debug(permSetId);
+        System.debug(myobjs);
+        
+    }
+    
+    //*********************************Query Locator Start*******************************************************
+    global Database.QueryLocator start(Database.BatchableContext bc){
+        
+        System.debug(permSetId);
+        System.debug(myobjs);
+        
+        // String query = 'SELECT Field,Id,ParentId,PermissionsEdit,PermissionsRead,SobjectType FROM FieldPermissions';
+        // query+= ' WHERE SobjectType in :objs AND ParentId = :permSetId';
+        
+        // System.debug(query);
+        return Database.getQueryLocator('SELECT Field,Id,ParentId,PermissionsEdit,PermissionsRead,SobjectType FROM FieldPermissions WHERE SobjectType in :myobjs AND ParentId = :permSetId');
+    }
+    
+    //*******************************************Batchable context *****************************************************************
+    global void execute(Database.BatchableContext bc, List<FieldPermissions> lFieldPermissions){
+        System.debug('I AM HERE');
+        System.debug(lFieldPermissions);
+        map <string,FieldPermissions> mUpdateFp = new map <string,FieldPermissions>();
+        List<FieldPermissions> lNewFp = new list <FieldPermissions>();
+        
+        // put field perms into a map by object
+        Map<string,List<FieldPermissions>> mObject2ListFieldPerm = new Map<string,List<FieldPermissions>>();
+        for(FieldPermissions fp  :lFieldPermissions){
+            If(mObject2ListFieldPerm.containsKey(fp.SobjectType)){
+                List<FieldPermissions> thislfp =  mObject2ListFieldPerm.get(fp.SobjectType);
+                thislFP.add(fp);
+                mObject2ListFieldPerm.put(fp.SobjectType,thislFP);   
+            }
+            Else
+            {
+                mObject2ListFieldPerm.put(fp.SobjectType,New List<FieldPermissions>{fp});
+            }
+        }
+        //--------------ubove here variables can be global --
+        //iterate over the objects
+        For(string obj :mObject2ListFieldPerm.keySet()){
+            // Now we are at the object level variabless are now context specific
+            //create a map key = field name to the perm set
+            List<FieldPermissions> thislFP = mObject2ListFieldPerm.get(obj);
+            Map<string,FieldPermissions> mField2FieldPerm = new Map<string,FieldPermissions>();
+            for(FieldPermissions fp  :thislFP){
+                mField2FieldPerm.put(fp.Field.substringAfter('.').tolowercase(),fp);
+            }
+            
+            // now get the schema and field map for the current onject
+            //Map<String, Schema.SObjectType> gd = Schema.getGlobalDescribe();
+            Schema.DescribeSObjectResult objdescribed  = gd.get(obj).getDescribe();
+            Map<String, Schema.SObjectField> fieldMap = objdescribed.fields.getMap();
+            
+            //loop over schema
+            For(string myfield  :fieldMap.keyset()){
+                System.debug('PROCESSING  ' + myfield);
+                string fieldname; 
+                // make field names all lowercase fore field, compund field and relationship name----
+                if(fieldMap.get(myfield).getDescribe().compoundFieldName == Null){
+                    fieldname = myfield.toLowerCase();     
+                }
+                else
+                {
+                    fieldname  = fieldMap.get(myfield).getDescribe().compoundFieldName.toLowerCase();   
+                }
+                if(fieldMap.get(myfield).getDescribe().getRelationshipName()<> NULL && !fieldMap.get(myfield).getDescribe().getRelationshipName().endswith('__r')){
+                    fieldname  = fieldMap.get(myfield).getDescribe().getRelationshipName().toLowerCase();   
+                }
+                System.debug('PROCESSING  ' + fieldname +' Which is  '+ myfield);
+                //----------------
+                // System.debug('My field is set to ' + myField + ' But the Field name is now set to ' + fieldname);
+                // is field permisionable
+                System.debug('PERSON ACCOOUNT FIELD ? ' + isPersonAccRefField(MyField));
+                If(fieldMap.get(myfield).getDescribe().isPermissionable() && !isPersonAccRefField(MyField)){
+                    System.debug( 'About to set RW');
+                    System.debug (rWOption);
+                    switch on rWOption {
+                        when 'rw' {  System.debug ('rw');    
+                            Readwrite(permSetId,Obj,MyField,FieldName,fieldMap,mField2FieldPerm,mUpdateFp,lNewFp); 
+                        }   
+                        when 'r' {   System.debug ('r');    
+                            Read(permSetId,Obj,MyField,FieldName,fieldMap,mField2FieldPerm,mUpdateFp,lNewFp);
+                        }
+                        when 'none' {       System.debug ('none');
+                             none(permSetId,Obj,MyField,FieldName,fieldMap,mField2FieldPerm,mUpdateFp,lNewFp);
+                        }
+                        when else {       System.debug ('opps');
+                            continue;
+                        }
+                    }   
+                } 
+            }  
+        }
+        if(mUpdateFp.size()>0){
+            Database.SaveResult[]  srList = Database.Update(mUpdateFp.values(), false);
+                       for (Database.SaveResult sr : srList) {
+                if (sr.isSuccess()) {
+                    //Operation was successful, so get the ID of the record that was processed
+                    System.debug('Successfully inserted record with ID: ' + sr.getId());
+                }
+                else {
+                    //Operation failed, so get all errors                
+                    for(Database.Error err : sr.getErrors()) {
+                        System.debug('The following error has occurred.');                    
+                        System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                        System.debug('fields that affected this error: ' + err.getFields());
+                    }
+                }
+            }   
+        }   
+        if(lNewFp.size()>0){
+            Database.SaveResult[] srList = Database.insert(lNewFp, false);
+            for (Database.SaveResult sr : srList) {
+                if (sr.isSuccess()) {
+                    //Operation was successful, so get the ID of the record that was processed
+                    System.debug('Successfully inserted record with ID: ' + sr.getId());
+                }
+                else {
+                    //Operation failed, so get all errors                
+                    for(Database.Error err : sr.getErrors()) {
+                        System.debug('The following error has occurred.');                    
+                        System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                        System.debug('fields that affected this error: ' + err.getFields());
+                    }
+                }
+            }   
+        } 
+        
+        
+    }
+    
+    //************************************************************************************************************************************************************************
+    Public static Void Readwrite(id permSetId,string obj,string myfield,string fieldname, Map<String, Schema.SObjectField> fieldMap,
+                                 Map<string,FieldPermissions> mField2FieldPerm,
+                                 map <string,FieldPermissions> mUpdateFp,List<FieldPermissions> lNewFp){
+                                     System.debug(myfield);
+                                                                
+                                     boolean updated = false;
+                                     if(mField2FieldPerm.containskey(fieldname)){                                                        
+                                         If(!fieldMap.get(myfield ).getDescribe().isCalculated() &&
+                                            !fieldMap.get(myfield ).getDescribe().isAutonumber() && mField2FieldPerm.get(fieldname).PermissionsEdit == false){
+                                                mField2FieldPerm.get(fieldname).PermissionsEdit = True;
+                                                updated = true;
+                                            }
+                                         If(mField2FieldPerm.get(fieldname).PermissionsRead == False){
+                                             mField2FieldPerm.get(fieldname).PermissionsRead = True;
+                                             updated = true;
+                                         }
+                                         if(updated){mUpdateFp.put(fieldname, mField2FieldPerm.get(fieldname));}                   
+                                     }
+                                     Else    
+                                     {  
+                                         If(fieldMap.get(myfield).getDescribe().isCalculated() || fieldMap.get(myfield).getDescribe().isAutonumber()){
+                                             FieldPermissions myFP = new  FieldPermissions(Field = obj + '.' + fieldname, ParentId = permSetId,  PermissionsRead = True, SobjectType = obj);
+                                             lNewFp.add(myFP);
+                                         }
+                                         Else
+                                         {
+                                             System.debug('Here to add fieldperm for ' + fieldname );
+                                             FieldPermissions myFP = new  FieldPermissions(Field = obj + '.' + fieldname, ParentId = permSetId,PermissionsEdit = True, PermissionsRead = True, SobjectType = obj);   
+                                             lNewFp.add(myFP);     
+                                         }  
+                                     }
+                                     
+                                 }
+    
+    //*********************************************************************************************************************************
+    Public static Void Read(id permSetId,string obj,string myfield,string fieldname, Map<String, Schema.SObjectField> fieldMap,
+                                 Map<string,FieldPermissions> mField2FieldPerm,
+                                 map <string,FieldPermissions> mUpdateFp,List<FieldPermissions> lNewFp){
+                                     System.debug(myfield);
+                                                                
+                                     boolean updated = false;
+                                     if(mField2FieldPerm.containskey(fieldname)){                                                        
+                                         If(!fieldMap.get(myfield ).getDescribe().isCalculated() &&
+                                            !fieldMap.get(myfield ).getDescribe().isAutonumber() && mField2FieldPerm.get(fieldname).PermissionsEdit == True){
+                                                mField2FieldPerm.get(fieldname).PermissionsEdit = False;
+                                                updated = true;
+                                            }
+                                         If(mField2FieldPerm.get(fieldname).PermissionsRead == False){
+                                             mField2FieldPerm.get(fieldname).PermissionsRead = True;
+                                             updated = true;
+                                         }
+                                         if(updated){mUpdateFp.put(fieldname, mField2FieldPerm.get(fieldname));}                   
+                                     }
+                                     Else    
+                                     {  
+                                         If(fieldMap.get(myfield).getDescribe().isCalculated() || fieldMap.get(myfield).getDescribe().isAutonumber()){
+                                             FieldPermissions myFP = new  FieldPermissions(Field = obj + '.' + fieldname, ParentId = permSetId,  PermissionsRead = True, SobjectType = obj);
+                                             lNewFp.add(myFP);
+                                         }
+                                         Else
+                                         {
+                                             System.debug('Here to add fieldperm for ' + fieldname );
+                                             FieldPermissions myFP = new  FieldPermissions(Field = obj + '.' + fieldname, ParentId = permSetId,PermissionsEdit = False, PermissionsRead = True, SobjectType = obj);   
+                                             lNewFp.add(myFP);     
+                                         }  
+                                     }
+                                     
+                                 }
+    
+    
+    
+    //*************************************************************
+   
+    Public static Void none(id permSetId,string obj,string myfield,string fieldname, Map<String, Schema.SObjectField> fieldMap,
+                                 Map<string,FieldPermissions> mField2FieldPerm,
+                                 map <string,FieldPermissions> mUpdateFp,List<FieldPermissions> lNewFp){
+                                     System.debug(myfield);
+                                                                
+                                     boolean updated = false;
+                                     if(mField2FieldPerm.containskey(fieldname)){                                                        
+                                         If(!fieldMap.get(myfield ).getDescribe().isCalculated() &&
+                                            !fieldMap.get(myfield ).getDescribe().isAutonumber() && mField2FieldPerm.get(fieldname).PermissionsEdit == True){
+                                                mField2FieldPerm.get(fieldname).PermissionsEdit = False;
+                                                updated = true;
+                                            }
+                                         If(mField2FieldPerm.get(fieldname).PermissionsRead == True){
+                                             mField2FieldPerm.get(fieldname).PermissionsRead = False;
+                                             updated = true;
+                                         }
+                                         if(updated){mUpdateFp.put(fieldname, mField2FieldPerm.get(fieldname));}                   
+                                     }
+                                     Else    
+                                     {  
+                                     }
+                                     
+                                 }
+    
+    
+    //********************************************************************
+    
+    Global Boolean isPersonAccRefField(string FieldName){
+        Boolean myBoolean = False;
+        If(FieldName.right(6)== 'person' && FieldName.left(3) <> '__c'){myBoolean = True;}
+        If(FieldName.right(6)== 'person' && FieldName.left(3) <> '__r'){myBoolean = True;}
+        If(FieldName.left(3)== '_pc'){myBoolean = True;}
+        Return myBoolean;   
+    }
+    
+    global void finish(Database.BatchableContext bc){
+    }
+    
+}
