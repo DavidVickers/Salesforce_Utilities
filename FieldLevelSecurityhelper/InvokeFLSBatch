@@ -1,0 +1,12 @@
+public class InvokeFLSBatch { 
+    public static void AStdUserCloneFLS(){
+        list<string> objs = new list<string>();
+        Map<String, Schema.SObjectType> gd = Schema.getGlobalDescribe();
+        for(Schema.SObjectType thisObj : gd.values()) {
+           objs.add(string.valueof(thisObj));
+        }
+        FLSBatch myBatchObject = new FLSBatch('PROFILE NAME HERE',objs,'r'); 
+        Id batchId = Database.executeBatch(myBatchObject);
+    }
+    
+}
