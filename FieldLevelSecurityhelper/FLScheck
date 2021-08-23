@@ -1,0 +1,134 @@
+public class FLScheck {
+    
+    public static Map<String,List<String>> setFLSByProfile(string ProfileId, List<string> objs) {
+        List<PermissionSet> lPS = [SELECT Id FROM PermissionSet WHERE IsOwnedByProfile = true and ProfileId  = :ProfileId Limit 1];
+        return setFLS(lPS[0].id,objs);
+    }
+    
+    public static Void setFLSByPermSetName(string PermSetName, string obj) {
+        List<PermissionSet> lPS = [SELECT Id FROM PermissionSet WHERE IsOwnedByProfile = False and Name  = :PermSetName Limit 1];
+        // setFLS(lPS[0].id,obj);
+    }
+    
+    Public static id getDMprofileId(String profileName){
+        Profile p = [Select Id,Name from Profile where name = :ProfileName Limit 1]; 
+        return p.id;
+    }
+    
+    
+    
+    public static Map<String,List<String>> setFLS(id permSetId, List<string> objects) {
+        Map<String,String> MapObject2PassFail = new Map<String,String>();
+        Map<String,List<String>> MapObject2FieldsNotset = new Map<String,List<String>>();
+        //List<PermissionSet> lPS = [SELECT Id FROM PermissionSet WHERE IsOwnedByProfile = true and ProfileId  = :ProfileId Limit 1];
+        //string permSetId = lPS[0].id;
+        System.debug('Changing the recorst with this permset ID ' + permSetId );
+        List<FieldPermissions> lNewFp = new list <FieldPermissions>();
+        map <string,FieldPermissions> mUpdateFp = new map <string,FieldPermissions>();
+        
+        
+        //need thempermset id which is connected to profile
+        List<FieldPermissions> lFP = [SELECT Field,Id,ParentId,PermissionsEdit,PermissionsRead,SobjectType 
+                                      FROM FieldPermissions 
+                                      WHERE SobjectType in :objects AND ParentId = :permSetId];
+        
+        Map<string,List<FieldPermissions>> mObject2ListFieldPerm = new Map<string,List<FieldPermissions>>();
+        for(FieldPermissions fp  :lFP){
+            If(mObject2ListFieldPerm.containsKey(fp.SobjectType)){
+                List<FieldPermissions> thislfp =  mObject2ListFieldPerm.get(fp.SobjectType);
+                thislFP.add(fp);
+                mObject2ListFieldPerm.put(fp.SobjectType,thislFP);   
+            }
+            Else
+            {
+                mObject2ListFieldPerm.put(fp.SobjectType,New List<FieldPermissions>{fp});
+            }
+        }
+        
+        
+        /*
+Map<string,FieldPermissions> mField2FieldPerm = new Map<string,FieldPermissions>();
+for(FieldPermissions fp  :lFP){
+mField2FieldPerm.put(fp.Field.substringAfter('.').tolowercase(),fp);
+system.debug(fp.Field.substringAfter('.').tolowercase());
+}
+*/
+        
+        
+        
+        For(string obj :mObject2ListFieldPerm.keySet()){
+            MapObject2PassFail.put(obj,'Pass');
+            MapObject2FieldsNotset.put(obj,New List<string>());
+            
+            List<FieldPermissions> thislFP = mObject2ListFieldPerm.get(obj);
+            Map<string,FieldPermissions> mField2FieldPerm = new Map<string,FieldPermissions>();
+            for(FieldPermissions fp  :thislFP){
+                mField2FieldPerm.put(fp.Field.substringAfter('.').tolowercase(),fp);
+                // system.debug(fp.Field.substringAfter('.').tolowercase());
+            }
+            
+            
+            Map<String, Schema.SObjectType> gd = Schema.getGlobalDescribe();
+            Schema.DescribeSObjectResult objdescribed  = gd.get(obj).getDescribe();
+            Map<String, Schema.SObjectField> fieldMap = objdescribed.fields.getMap();
+            
+            //loop over schema
+            For(string myfield  :fieldMap.keyset()){
+                
+                string fieldname;  
+                if(fieldMap.get(myfield).getDescribe().compoundFieldName == Null){
+                    fieldname = myfield.toLowerCase(); 
+                    
+                }else{
+                    fieldname  = fieldMap.get(myfield).getDescribe().compoundFieldName.toLowerCase(); 
+                    
+                }
+                if(fieldMap.get(myfield).getDescribe().getRelationshipName()<> NULL && !fieldMap.get(myfield).getDescribe().getRelationshipName().endswith('__r')){
+                    fieldname  = fieldMap.get(myfield).getDescribe().getRelationshipName().toLowerCase(); 
+                    
+                }
+                // System.debug('My field is set to ' + myField + ' But the Field name is now set to ' + fieldname);
+                
+                If(fieldMap.get(myfield ).getDescribe().isPermissionable()){
+                    //boolean updated = false;
+                    
+                    if(mField2FieldPerm.containskey(fieldname)){
+                        
+                        If(!fieldMap.get(myfield ).getDescribe().isCalculated() &&
+                           !fieldMap.get(myfield ).getDescribe().isAutonumber() && mField2FieldPerm.get(fieldname).PermissionsEdit == false){
+                               MapObject2PassFail.put(obj,'Fail');
+                               List<string> theseStrings = MapObject2FieldsNotset.get(obj);
+                               theseStrings.add(fieldname);
+                               MapObject2FieldsNotset.put(obj,theseStrings);
+                               //updated = true;
+                           }
+                        // If(mField2FieldPerm.get(fieldname).PermissionsRead == False){
+                        //    mField2FieldPerm.get(fieldname).PermissionsRead = True;
+                        //    updated = true;
+                        //   }
+                        //  if(updated){mUpdateFp.put(fieldname, mField2FieldPerm.get(fieldname));}                   
+                    }
+                    Else    
+                    {  
+                        If(!fieldMap.get(myfield).getDescribe().isCalculated() && !fieldMap.get(myfield ).getDescribe().isAutonumber()){
+                            MapObject2PassFail.put(obj,'Fail');
+                            List<string> theseStrings = MapObject2FieldsNotset.get(obj);
+                            theseStrings.add(fieldname);
+                            MapObject2FieldsNotset.put(obj,theseStrings); 
+                        }
+                        Else
+                        {
+                            // FieldPermissions myFP = new  FieldPermissions(Field = obj + '.' + fieldname, ParentId = permSetId, PermissionsRead = True, SobjectType = obj);   
+                            //  lNewFp.add(myFP);
+                        }  
+                    } 
+                } 
+            }
+            
+        }
+        System.debug(MapObject2PassFail);
+        Return MapObject2FieldsNotset;
+    }
+    
+    
+}
