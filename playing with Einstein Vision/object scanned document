@@ -2123,10 +2123,10 @@
     "compactLayouts" : "/services/data/v52.0/sobjects/Scanned_Document__c/describe/compactLayouts",
     "rowTemplate" : "/services/data/v52.0/sobjects/Scanned_Document__c/{ID}",
     "approvalLayouts" : "/services/data/v52.0/sobjects/Scanned_Document__c/describe/approvalLayouts",
-    "uiDetailTemplate" : "https://davidvicke-20210125-demo.my.salesforce.com/{ID}",
+    
     "uiEditTemplate" : "https://davidvicke-20210125-demo.my.salesforce.com/{ID}/e",
     "describe" : "/services/data/v52.0/sobjects/Scanned_Document__c/describe",
-    "uiNewRecord" : "https://davidvicke-20210125-demo.my.salesforce.com/a0F/e",
+    
     "quickActions" : "/services/data/v52.0/sobjects/Scanned_Document__c/quickActions",
     "layouts" : "/services/data/v52.0/sobjects/Scanned_Document__c/describe/layouts",
     "sobject" : "/services/data/v52.0/sobjects/Scanned_Document__c"
