@@ -1,3 +1,9 @@
+//PLEASE NOTE !!!! this is all code writen using publically available documentation and this application was built as a POC
+//This should not be considered as a production application but as a set of ideas and examples to experiment with
+//Any use of this code is at your own risk with no warranty or guarantee as to fitness of purpose.
+
+
+
 public class VisionController {
     public enum formTypes {dl, passport, paystub, permanentResident, w2,tenForty}
     public enum tasks {contact, form, table, text}
@@ -21,7 +27,7 @@ public class VisionController {
         // jwt.cert = 'JWTCert'; // Uncomment this if you used a Salesforce certificate to sign up for an Einstein Platform account
         jwt.pkcs8 = keyContents; // Comment this if you are using jwt.cert
         jwt.iss = 'developer.force.com';
-        jwt.sub = 'david.vickers@salesforce.com';
+        jwt.sub = 'your.email@comany.com'; //the email you registers for your Einstein vision account with
         jwt.aud = 'https://api.einstein.ai/v2/oauth2/token';
         jwt.exp = '3600';
         String access_token = JWTBearerFlow.getAccessToken('https://api.einstein.ai/v2/oauth2/token', jwt);
@@ -43,7 +49,8 @@ public class VisionController {
         // Make a prediction for an image stored in Salesforce
         // by passing the file as blob which is then converted to base64 string
         ContentVersion content = [SELECT Title,VersionData FROM ContentVersion where contentdocumentId =:docId  LIMIT 1];
-        return Vision.predictBlob(content.VersionData, access_token,'V5H7SSVQ3ENWKI225XEQ63XBVQ');
+        return Vision.predictBlob(content.VersionData, access_token,'V5H7SSVQ3ENWKI225XEQ63XBVQ'); 
+        // NOTE V5H7SSVQ3ENWKI225XEQ63XBVQ is the image classification Model Id for my trained model. This should not be hard coded but should be a passed in Paramenter!!
     }
     
     
