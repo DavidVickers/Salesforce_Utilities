@@ -1,0 +1,197 @@
+//PLEASE NOTE !!!! this is all code writen using publically available documentation and this application was built as a POC
+//This should not be considered as a production application but as a set of ideas and examples to experiment with
+//Any use of this code is at your own risk with no warranty or guarantee as to fitness of purpose.
+
+
+
+public class ProcessDocument {
+    public static string passport = 'US passport';
+    public static string driverlicence = 'USA drivers licence';
+    private static Map<string,integer> monthsMap = new Map<string,integer>{
+     'Jan' => 1,
+     'Feb' => 2,
+     'Mar' => 3,
+     'Apr' => 4,
+     'May' => 5,
+     'Jun' => 6, 
+     'Jul' => 7,
+     'Aug' => 8,
+     'Sep' => 9, 
+     'Oct' => 10,
+     'Nov' => 11,
+     'Dec' => 12          
+    };
+    
+        
+    //send the image to the image recognition api the itterate throught the probabilties to get the highest probability    
+    public static Map<string,decimal> Checktype(String docId){
+        Map<string,decimal> output = new Map<string,decimal>();
+        VisionController vc = new Visioncontroller();
+        list<Vision.Prediction> predictions = vc.getCallVisionContent(docId);
+        decimal prob = 0.00;
+        String prediction = 'None';
+        For(Vision.Prediction vp : predictions){  
+            if(vp.probability > prob){
+                prob = vp.probability;
+                prediction = vp.label;   
+            }   
+        }
+        output.put(prediction,prob);
+        return output;
+    }
+    
+    
+    public static Scanned_Document__c processscan(String docId){
+        Scanned_Document__c sd = new Scanned_Document__c();    
+        Map<string,decimal> doctype = Checktype(docId);
+        system.debug(doctype);
+        if(doctype.containsKey(passport)){
+            System.debug('its a passport');   
+        }
+        if(doctype.containsKey(driverlicence)){
+            VisionController vc = new VisionController();  
+            Map<string,String> Licenseinfo = DocReader.ReadLicense(vc.getOCRReponse(docId, 'dl'));
+            sd.RecordTypeId =  Schema.SObjectType.Scanned_Document__c.getRecordTypeInfosByName().get('Drivers Licence').getRecordTypeId(); 
+            for(string S : Licenseinfo.keyset()){
+                System.debug(s +' --> '+ Licenseinfo.get(s));  
+                if(s == 'date of birth' || s == '3.DOB' || s == 'DOB') {
+                    string dob = Licenseinfo.get(s);
+                    dob = strip(dob);
+                    sd.Date_Of_Birth__c =  date.newInstance(integer.valueof(dob.right(4)),integer.valueof(dob.left(2)),integer.valueof(dob.right(6).left(2)));
+                }   
+                if(s == 'sex' || s == '15.sex') {
+                    sd.Sex__c = Licenseinfo.get(s) == 'F' ? 'Female' : 'Male';
+                } 
+                if(s == 'issue date' || s == '4a.ISS' || s == 'ISS') {
+                    string issdate = Licenseinfo.get(s);
+                    issdate = strip(issdate);
+                    sd.Issue_Date__c =  date.newInstance(integer.valueof(issdate.right(4)),integer.valueof(issdate.left(2)),integer.valueof(issdate.right(6).left(2)));  
+                }
+                
+                if(s == 'expires' || s == '4b.exp' || s == 'EXP') {
+                    string expdate = Licenseinfo.get(s);
+                    expdate = strip(expdate);
+                    sd.Expires__c =  date.newInstance(integer.valueof(expdate.right(4)),integer.valueof(expdate.left(2)),integer.valueof(expdate.right(6).left(2)));  
+                }
+                if(s == 'name'){
+                    sd.Name__c = Licenseinfo.get(s);
+                }
+                System.debug(s +' --> '+ Licenseinfo.get(s)); 
+                
+                if(s == '2.given names' || s == 'FN'){
+                    System.debug(s +' --> '+ Licenseinfo.get(s)); 
+                    sd.First_Name__c = Licenseinfo.get(s);
+                }
+                
+                if(s == '1.family name' || s == 'LN'){
+                    sd.Last_Name__c = Licenseinfo.get(s);
+                }
+                
+                if(s == 'state'){
+                    sd.Issuing_State__c = Licenseinfo.get(s);
+                }
+                
+            }  
+            
+        }
+        if(doctype.containsKey(passport)){
+            VisionController vc = new VisionController();  
+            Map<string,String> passPortInfo = DocReader.readPassport(vc.getOCRReponse(docId, 'passport'));
+            sd.RecordTypeId =  Schema.SObjectType.Scanned_Document__c.getRecordTypeInfosByName().get('Passport').getRecordTypeId(); 
+            for(string S : passPortInfo.keyset()){
+                if(s == null ){continue;}
+                System.debug(s +' --> '+ passPortInfo.get(s));  
+                if(s.contains('Date of birth') ) {
+                    try{
+                        string dob = passPortInfo.get(s);
+                        sd.Date_Of_Birth__c =  date.newInstance(integer.valueof(dob.right(4)),monthsMap.get(dob.replaceAll('[0-9]','').deleteWhitespace()),integer.valueof(dob.left(2)));   
+                    }catch (Exception e){     
+                    }
+                }
+                System.debug(s);
+                if(s.contains('Sex')) {
+                    sd.Sex__c = passPortInfo.get(s) == 'F' ? 'Female' : 'Male';
+                } 
+                System.debug(s);
+                if(s.contains('Date of issue')) {
+                    
+                    try {
+                        string issdate = passPortInfo.get(s);
+                        sd.Issue_Date__c =  date.newInstance(integer.valueof(issdate.right(4)),monthsMap.get(issdate.replaceAll('[0-9]','').deleteWhitespace()),integer.valueof(issdate.left(2)));
+                    } catch(Exception e) {
+                    }
+                    //  string issdate = passPortInfo.get(s);
+                    // sd.Issue_Date__c =  date.newInstance(integer.valueof(issdate.right(4)),monthsMap.get(issdate.replaceAll('[0-9]','').deleteWhitespace()),integer.valueof(issdate.left(2)));
+                }
+                if(s.contains('Date of expiration')) {
+                    try {
+                        string expdate = passPortInfo.get(s);
+                        sd.Expires__c =  date.newInstance(integer.valueof(expdate.right(4)),monthsMap.get(expdate.replaceAll('[0-9]','').deleteWhitespace()),integer.valueof(expdate.left(2))); 
+                    }  catch(Exception e) {
+                    }              
+                }
+                if(s.contains('Given Names')){
+                    System.debug(s +' --> '+ passPortInfo.get(s)); 
+                    sd.First_Name__c = passPortInfo.get(s);
+                }
+                
+                if(s.contains('Surname')){
+                    sd.Last_Name__c = passPortInfo.get(s);
+                }
+                
+                if(s.contains('Nationality')){
+                    sd.Nationality__c = passPortInfo.get(s);
+                }    
+            }     
+        }
+        
+        
+        
+        return sd;  
+    }
+    
+    
+    //Can't remeber why I needed to do this! Check the  DOB return
+    Public static string strip(string s){  
+        Integer[] chars = s.getChars();
+        s = '';
+        For(integer i = 0 ; i < chars.size(); i++ ){  
+            switch on chars[i] {
+                when 48 {
+                    s =  s + '0';  
+                }	
+                when 49 {
+                    s =  s + '1'; 
+                }
+                when 50 {
+                    s =  s + '2'; 
+                }
+                when 51 {
+                    s =  s + '3'; 
+                }
+                when 52 {
+                    s =  s + '4'; 
+                }
+                when 53 {
+                    s =  s + '5'; 
+                }
+                when 54 {
+                    s =  s + '6'; 
+                }
+                when 55 {
+                    s =  s + '7'; 
+                }
+                when 56 {
+                    s =  s + '8'; 
+                }
+                when 57 {
+                    s =  s + '9'; 
+                }
+                when else {	
+                }
+            }   
+        }
+        return s;
+    }
+    
+}
