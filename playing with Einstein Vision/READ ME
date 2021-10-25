@@ -1,0 +1,8 @@
+For PassPort   or Drivers licence read the process is triggered when and new contenct document is uploaded
+
+trigger ContentDocumentTrigger on ContentDocument (after insert) {
+    
+    ID jobID = System.enqueueJob(new ScanAsync(trigger.new));
+    }
+    
+    This would be a very bad way to do things in practice !!
