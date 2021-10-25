@@ -16,6 +16,7 @@ public class VisionController {
     public String getAccessToken() {
         // Ignore the File upload part and "jwt.pkcs" if you used a Salesforce certificate to sign up 
         // for an Einstein Platform account
+        // THIS IS HOW YOUR PRIVATE ACCESS KEY IS GOT! IT IS STORED IN A CONTENT DOCUMENT
         ContentVersion base64Content = [SELECT Title, VersionData FROM ContentVersion where Title='einstein_platform' OR  Title='predictive_services' ORDER BY Title LIMIT 1];
         String keyContents = base64Content.VersionData.tostring();
         keyContents = keyContents.replace('-----BEGIN RSA PRIVATE KEY-----', '');
