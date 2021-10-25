@@ -1,0 +1,205 @@
+public class EinsteinOCR {    
+    public static final set<string> formTypes = ConstantClass.formTypesKeyset();
+    public static final set<string> taskTypes = ConstantClass.tasksKeyset();
+    public string modelId = 'OCRModel';
+    public static String VISION_API = 'https://api.einstein.ai/v2/vision/ocr';
+    
+    public static string extractText(String imageUrl, String token, String model) {
+        
+        HttpRequest req = new HttpRequest();
+        req.setMethod('POST');
+        req.setEndpoint(VISION_API);
+        req.setHeader('content-type', 'multipart/form-data; charset="UTF-8"; boundary="1ff13444ed8140c7a32fc4e6451aa76d"');
+        req.setHeader('Authorization', 'Bearer '+ token); //replace token with your access token
+        
+        req.setHeader('Cache-Control', 'no-cache');
+        
+        string form64 = '';        
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('sampleLocation', imageUrl);
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('modelId', model);
+        form64 += HttpFormBuilder.WriteBoundary(HttpFormBuilder.EndingType.CrLf);
+        
+        blob formBlob = EncodingUtil.base64Decode(form64);
+        string contentLength = string.valueOf(formBlob.size());
+        req.setBodyAsBlob(formBlob);
+        
+        req.setHeader('Connection', 'keep-alive');
+        req.setHeader('Content-Length', contentLength);
+        req.setTimeout(60*1000);
+        
+        Http h = new Http();
+        String resp;
+        HttpResponse res = h.send(req);
+        return res.getBody();
+    }
+    
+ 
+    
+    public static string extractText(blob fileBlob, String token, String model, string task, string formType,String sampleId) {
+         
+      if(formTypes.contains(formType)){
+            If(formType == 'tenForty'){
+                formType = '1040';
+            }
+        }
+        Else
+        {
+         formType  = Null; 
+        }
+        If(!tasktypes.contains(task)){
+        task = 'text';   
+        }
+        
+        HttpRequest req = new HttpRequest();
+        req.setMethod('POST');
+        req.setEndpoint(VISION_API);
+        req.setHeader('content-type', 'multipart/form-data; charset="UTF-8"; boundary="1ff13444ed8140c7a32fc4e6451aa76d"');
+        req.setHeader('Authorization', 'Bearer '+ token); //replace token with your access token
+        
+        req.setHeader('Cache-Control', 'no-cache');
+        
+        System.debug(model + '   '  + task + '   '  + formtype + '   '  + sampleId);
+        
+        
+        string form64 = '';        
+        form64 += HttpFormBuilder.WriteBoundary();
+        //form64 += HttpFormBuilder.WriteBodyParameter('sampleLocation', 'https://davidvicke-20210125-demo--c.documentforce.com/sfc/dist/version/download/?oid=00D4x000006rQ7S&ids=0684x0000025ytd&d=%2Fa%2F4x000000wnp7%2F.owmsKvtkJUxcACIJLFiIHOuBRdqtd8jqM63bMWvaJ8&asPdf=false');
+       	form64 += HttpFormBuilder.WriteBodyParameter('sampleBase64Content', EncodingUtil.base64Encode(fileBlob));
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('modelId',model);
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('task',task);
+        If(formType <> Null){
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('formType',formType);
+    	}
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('sampleId',sampleId);
+        form64 += HttpFormBuilder.WriteBoundary(HttpFormBuilder.EndingType.CrLf);
+        System.debug(form64);
+        blob formBlob = EncodingUtil.base64Decode(form64);
+        string contentLength = string.valueOf(formBlob.size());
+        req.setBodyAsBlob(formBlob);
+        
+        req.setHeader('Connection', 'keep-alive');
+        req.setHeader('Content-Length', contentLength);
+        req.setTimeout(60*1000);
+        
+        Http h = new Http();
+        String resp;
+        HttpResponse res = h.send(req);
+        return res.getBody();
+    }
+    
+        public static string blobExtractText(blob fileBlob, String token, String model, string task) {
+         
+        
+        HttpRequest req = new HttpRequest();
+        req.setMethod('POST');
+        req.setEndpoint(VISION_API);
+        req.setHeader('content-type', 'multipart/form-data; charset="UTF-8"; boundary="1ff13444ed8140c7a32fc4e6451aa76d"');
+        req.setHeader('Authorization', 'Bearer '+ token); //replace token with your access token
+        
+        req.setHeader('Cache-Control', 'no-cache');
+        
+        string form64 = '';        
+        form64 += HttpFormBuilder.WriteBoundary();
+        //form64 += HttpFormBuilder.WriteBodyParameter('sampleLocation', 'https://davidvicke-20210125-demo--c.documentforce.com/sfc/dist/version/download/?oid=00D4x000006rQ7S&ids=0684x0000025ytd&d=%2Fa%2F4x000000wnp7%2F.owmsKvtkJUxcACIJLFiIHOuBRdqtd8jqM63bMWvaJ8&asPdf=false');
+       	form64 += HttpFormBuilder.WriteBodyParameter('sampleBase64Content', EncodingUtil.base64Encode(fileBlob));
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('modelId',model);
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('task',task);
+        form64 += HttpFormBuilder.WriteBoundary(HttpFormBuilder.EndingType.CrLf);
+        blob formBlob = EncodingUtil.base64Decode(form64);
+        string contentLength = string.valueOf(formBlob.size());
+        req.setBodyAsBlob(formBlob);
+        
+        req.setHeader('Connection', 'keep-alive');
+        req.setHeader('Content-Length', contentLength);
+        req.setTimeout(60*1000);
+        
+        Http h = new Http();
+        String resp;
+        HttpResponse res = h.send(req);
+        return res.getBody();
+    }
+    
+    //'https://davidvicke-20210125-demo--c.documentforce.com/sfc/dist/version/download/?oid=00D4x000006rQ7S&ids=0684x0000025Wfp&d=%2Fa%2F4x000000wnd8%2FW.xhLPDFQNxZOnoT16183gsCJXfuVCKvpBc_9Wf4Xvk&asPdf=false'
+    public static string extractdl(string dlURL) {
+        VisionController vc = new VisionController();
+        string token = vc.getAccessToken();
+        HttpRequest req = new HttpRequest();
+        req.setMethod('POST');
+        req.setEndpoint(VISION_API);
+        req.setHeader('content-type', 'multipart/form-data; charset="UTF-8"; boundary="1ff13444ed8140c7a32fc4e6451aa76d"');
+        req.setHeader('Authorization', 'Bearer '+ token); //replace token with your access token
+        
+        req.setHeader('Cache-Control', 'no-cache');
+        
+        string form64 = '';        
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('sampleLocation',dlURL);
+       	//form64 += HttpFormBuilder.WriteBodyParameter('sampleBase64Content', EncodingUtil.base64Encode(fileBlob));
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('modelId','OCRModel');
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('task','form');
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('formType','dl');
+        form64 += HttpFormBuilder.WriteBoundary(HttpFormBuilder.EndingType.CrLf);
+        
+        blob formBlob = EncodingUtil.base64Decode(form64);
+        string contentLength = string.valueOf(formBlob.size());
+        req.setBodyAsBlob(formBlob);
+        
+        req.setHeader('Connection', 'keep-alive');
+        req.setHeader('Content-Length', contentLength);
+        req.setTimeout(60*1000);
+        
+        Http h = new Http();
+        String resp;
+        HttpResponse res = h.send(req);
+        return res.getBody();
+    }
+    
+    public static string extractPP(string dlURL) {
+        VisionController vc = new VisionController();
+        string token = vc.getAccessToken();
+        HttpRequest req = new HttpRequest();
+        req.setMethod('POST');
+        req.setEndpoint(VISION_API);
+        req.setHeader('content-type', 'multipart/form-data; charset="UTF-8"; boundary="1ff13444ed8140c7a32fc4e6451aa76d"');
+        req.setHeader('Authorization', 'Bearer '+ token); //replace token with your access token
+        
+        req.setHeader('Cache-Control', 'no-cache');
+        
+        string form64 = '';        
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('sampleLocation',dlURL);
+       	//form64 += HttpFormBuilder.WriteBodyParameter('sampleBase64Content', EncodingUtil.base64Encode(fileBlob));
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('modelId','OCRModel');
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('task','form');
+        form64 += HttpFormBuilder.WriteBoundary();
+        form64 += HttpFormBuilder.WriteBodyParameter('formType','passport');
+        form64 += HttpFormBuilder.WriteBoundary(HttpFormBuilder.EndingType.CrLf);
+        
+        blob formBlob = EncodingUtil.base64Decode(form64);
+        string contentLength = string.valueOf(formBlob.size());
+        req.setBodyAsBlob(formBlob);
+        
+        req.setHeader('Connection', 'keep-alive');
+        req.setHeader('Content-Length', contentLength);
+        req.setTimeout(60*1000);
+        
+        Http h = new Http();
+        String resp;
+        HttpResponse res = h.send(req);
+        return res.getBody();
+    }
+    
+}
