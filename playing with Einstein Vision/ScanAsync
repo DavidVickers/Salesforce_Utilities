@@ -1,0 +1,34 @@
+public class ScanAsync implements Queueable,Database.AllowsCallouts {
+    Public List<contentDocument> listCd;
+    
+    public ScanAsync(List<contentDocument> listCd){
+        this.listCD = listCd;
+    }
+    
+    public void execute(QueueableContext context) {
+        List<Scanned_Document__c> listSD = new list<Scanned_Document__c>();
+        Set<id> setIds = new set<id>();
+        for(contentDocument cd : listCd){
+            setids.add(cd.id);
+        }
+       
+        System.debug(setids);
+        List<contentVersion> listcv = [SELECT Id, ContentDocumentId, FirstPublishLocationId, VersionNumber FROM ContentVersion where ContentDocumentId in:setIds];
+        
+        
+        For(contentVersion cv : listcv){
+            string myId = string.valueOf(cv.FirstPublishLocationId);
+            System.debug(myId);
+            If(MyId.Left(3) == '00Q')  {
+                
+           
+            Scanned_Document__c sd = ProcessDocument.processscan(cv.ContentDocumentId);  
+            sd.Lead__c = cv.FirstPublishLocationId;
+            sd.contentdocument__c = cv.ContentDocumentId;
+            listSD.add(sd);   
+        }
+    }
+        insert ListSD;        
+    }
+    
+}
