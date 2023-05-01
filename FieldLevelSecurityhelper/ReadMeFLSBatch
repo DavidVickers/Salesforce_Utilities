@@ -8,8 +8,44 @@ Id myFLSBatchId = Database.executeBatch(new FLSBatch('ProfileName',listObjects, 
 you can also do this. in two steps
 FLSBatch myFLSBatch = new FLSBatch('ProfileName',listObjects, r or rw or none);
 Id myFLSBatchId = Database.executeBatch(myFLSBatch, 200);
-
-
-
+Note the batch size is optional as a paramater so I would just run
+FLSBatch myFLSBatch = new FLSBatch('ProfileName',listObjects, r or rw or none);
+Id myFLSBatchId = Database.executeBatch(myFLSBatch);
 
 Note: batchJobId will contain the job Id of the batch. To monitor or stop the execution of the batch Apex job: from Setup, enter Apex Jobs in the Quick Find box, then select Apex Jobs. 
+
+IMPORTANT
+to simplify this I also have the InvokeFLSBatch class this is a template and you are ment to hard code the values for Profile name and  the r rw or none because in gerneral you will
+be doing the same job over and over!
+The Class also  uses the schmea class to create a list of all the objects in the org assuming you want the updates on FLS to be made for all objects
+
+
+To be a more general class you could refactor this in this way. This would need some TLC with error handling and an overloaded method to full make it a universal 
+piece of code
+
+public class InvokeFLSBatch { 
+    public static void genericFLS(string profileName, string outcome){
+      // Note need error handling for illegal "outcome" values
+      // need 
+    
+        list<string> objs = new list<string>();
+        Map<String, Schema.SObjectType> gd = Schema.getGlobalDescribe();
+        for(Schema.SObjectType thisObj : gd.values()) {
+           objs.add(string.valueof(thisObj));
+        }
+        FLSBatch myBatchObject = new FLSBatch(profileName ,objs,'outcome); 
+        Id batchId = Database.executeBatch(myBatchObject);
+    }
+    
+    // overload the methods so you can choose to pas a list of objects or have the method apply to all objects ( above)
+    // by not passing a list of objects
+    
+    public static void genericFLS(string profileName, string outcome, list<string> objects){
+      // Note need error handling for illegal "outcome" values
+    
+        FLSBatch myBatchObject = new FLSBatch(profileName ,objects,'outcome); 
+        Id batchId = Database.executeBatch(myBatchObject);
+    }
+    
+}
+
