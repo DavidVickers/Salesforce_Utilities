@@ -1,0 +1,15 @@
+To Call The batch
+
+Run Batch Apex
+Open the Developer Console
+Click Debug | Open Execute Anonymous Window
+Execute the following code
+Id myFLSBatchId = Database.executeBatch(new FLSBatch('ProfileName',listObjects, r or rw or none), 200);
+you can also do this. in two steps
+FLSBatch myFLSBatch = new FLSBatch('ProfileName',listObjects, r or rw or none);
+Id myFLSBatchId = Database.executeBatch(myFLSBatch, 200);
+
+
+
+
+Note: batchJobId will contain the job Id of the batch. To monitor or stop the execution of the batch Apex job: from Setup, enter Apex Jobs in the Quick Find box, then select Apex Jobs. 
