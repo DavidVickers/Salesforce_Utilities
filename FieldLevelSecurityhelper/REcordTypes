@@ -1,0 +1,25 @@
+public class RecordTypePermGranter {
+    
+    
+    Public static Map<string,list<string>> getAllRecordTypes(){
+        Map<string,list<string>> mapRTs = new Map<string,list<string>>();
+        list<RecordType>  listRT = [select Id,Name, sObjectType from RecordType];
+        system.debug(listRT);
+        For(RecordType rt : listRT){
+            If(mapRTs.containskey(rt.sObjectType)){
+                list<string> listRecordTypeId = mapRTs.get(rt.sObjectType);
+                listRecordTypeId.add(rt.id + '_' + rt.name);
+                mapRTs.put(rt.sObjectType,listRecordTypeId);
+            }
+            else
+            {
+                mapRTs.put(rt.sObjectType,new list<string>{rt.id + '_' + rt.name}); 
+            } 
+        }
+        For(string s :mapRTs.keyset()){
+            System.debug('For Object ' + s + ' here are the recordtypes ' + mapRTs.get(s));
+        }
+        
+        System.debug(mapRTs);  
+        return mapRTs;
+    }
